@@ -1,0 +1,1 @@
+10.40.24.157 - - [08/May/2019:08:17:15 -0700]  "GET /telemetry/endpoint?hostname=thehost&id=07f635fd2&uptime=21597960&role=somerole&elapsed=252&statuscode=2&event=end HTTP/1.1" 200 0 "-" "Ruby" 0.000 (-)
