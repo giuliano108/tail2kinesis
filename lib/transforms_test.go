@@ -2,7 +2,9 @@ package lib
 
 import (
 	"encoding/json"
+	log "github.com/sirupsen/logrus"
 	"io/ioutil"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -38,9 +40,16 @@ func TestIdentity(t *testing.T) {
 
 func TestAccessLog2JSON(t *testing.T) {
 	var xform Transform
+	var emitter string
 	var err error
 	var fixtureb []byte
 	var transformed map[string]interface{}
+
+	emitter, err = os.Hostname()
+	if err != nil {
+		log.Errorf("Could not determine hostname: %v", err)
+		return
+	}
 
 	xform, err = NewAccessLog2JSON("unimplemented")
 	if err == nil {
@@ -61,8 +70,9 @@ func TestAccessLog2JSON(t *testing.T) {
 	var message string
 	expected = map[string]interface{}{
 		"_meta": map[string]interface{}{
-			"time": "08/May/2019:08:17:15 -0700",
-			"path": "/telemetry/endpoint",
+			"time":    "08/May/2019:08:17:15 -0700",
+			"path":    "/telemetry/endpoint",
+			"emitter": emitter,
 		},
 		"uptime":     json.Number("21597960"),
 		"hostname":   "thehost",
@@ -97,8 +107,9 @@ func TestAccessLog2JSON(t *testing.T) {
 
 	expected = map[string]interface{}{
 		"_meta": map[string]interface{}{
-			"time": "08/May/2019:08:17:15 -0700",
-			"path": "/",
+			"time":    "08/May/2019:08:17:15 -0700",
+			"path":    "/",
+			"emitter": emitter,
 		},
 	}
 	message, err = xform.Do(string(fixtureb))
@@ -120,8 +131,9 @@ func TestAccessLog2JSON(t *testing.T) {
 
 	expected = map[string]interface{}{
 		"_meta": map[string]interface{}{
-			"time": "08/May/2019:08:17:15 -0700",
-			"path": "",
+			"time":    "08/May/2019:08:17:15 -0700",
+			"path":    "",
+			"emitter": emitter,
 		},
 	}
 	message, err = xform.Do(string(fixtureb))

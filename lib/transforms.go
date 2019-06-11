@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"net/url"
+	"os"
 	"regexp"
 	"strconv"
 )
@@ -28,8 +30,9 @@ func NewIdentity() (Transform, error) {
 // `AccessLog2JSON`
 
 type AccessLog2JSON struct {
-	format string
-	re     *regexp.Regexp
+	format  string
+	emitter string
+	re      *regexp.Regexp
 }
 
 /*
@@ -48,6 +51,7 @@ type AccessLog2JSON struct {
 
 		{
 		  "_meta": {
+			"emitter": "emitter's hostname",
 			"path": "/endpoint",
 			"time": "08/May/2019:08:17:15 -0700"
 		  },
@@ -68,6 +72,7 @@ func (t *AccessLog2JSONQuery) Do(s string) (string, error) {
 
 	data := make(map[string]interface{})
 	data["_meta"] = make(map[string]string)
+	data["_meta"].(map[string]string)["emitter"] = t.emitter
 	data["_meta"].(map[string]string)["time"] = matches[0][4]
 	url, err := url.Parse(matches[0][6])
 	if err == nil {
@@ -98,7 +103,12 @@ func NewAccessLog2JSON(format string) (Transform, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &AccessLog2JSONQuery{AccessLog2JSON{format: format, re: re}}, nil
+		emitter, err := os.Hostname()
+		if err != nil {
+			log.Warnf("Could not determine hostname: %v", err)
+			emitter = "n/a"
+		}
+		return &AccessLog2JSONQuery{AccessLog2JSON{format: format, emitter: emitter, re: re}}, nil
 	} else {
 		return nil, fmt.Errorf("unsupported log format: %s", format)
 	}
