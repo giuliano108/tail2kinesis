@@ -27,4 +27,4 @@ build:
 	go build .
 
 test:
-	go test -test.v tail2kinesis/lib
+	go test -test.v ./...

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/giuliano108/tail2kinesis/lib"
 	"github.com/hpcloud/tail"
 	"github.com/sendgridlabs/go-kinesis"
 	"github.com/sendgridlabs/go-kinesis/batchproducer"
@@ -9,7 +10,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"tail2kinesis/lib"
 	"time"
 )
 
