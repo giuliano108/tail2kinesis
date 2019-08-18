@@ -4,16 +4,18 @@ tail2kinesis - Like 'tail -f', outputs to Amazon Kinesis, optionally transforms 
 Usage:
     tail2kinesis -h | --help
     tail2kinesis -v | --version
-    tail2kinesis --stream-name=STREAM_NAME [--auth=AUTH_TYPE] [--region=REGION] [--transform=TRANSFORM] [--endpoint=ENDPOINT] [--log-level=LOG_LEVEL] <filename>
+    tail2kinesis --stream-name=STREAM_NAME [--auth=AUTH_TYPE] [--role-arn=ROLE_ARN] [--region=REGION] [--transform=TRANSFORM] [--endpoint=ENDPOINT] [--log-level=LOG_LEVEL] <filename>
 
 Options:
     -h --help
     -v --version
     --auth=AUTH_TYPE
-                 Get the credentials from the environment (AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY/AWS_SESSION_TOKEN)
-                 or the EC2 metadata service. The latter requires the calling instance to be attached to
-                 an instance profile.
-                 Allowed: {env,metadata} - [default: env].
+                 Get the credentials from the environment (AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY/AWS_SESSION_TOKEN),
+                 the EC2 metadata service or STS AssumeRole. For 'metadata', the calling instance to be attached to
+                 an instance profile. For 'assumerole', you need to pass '--role-arn'.
+                 Allowed: {env,metadata,assumerole} - [default: env].
+    --role-arn=ROLE_ARN
+                 The Amazon Resource Name (ARN) of the role to assume.
     --region=REGION
                  AWS region. If not specified, the AWS_DEFAULT_REGION environment variable is used.
                  No region is required when using the --endpoint option.
