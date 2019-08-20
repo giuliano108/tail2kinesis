@@ -1,41 +1,75 @@
 package main
 
 import (
-	"fmt"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds"
+	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/giuliano108/tail2kinesis/lib"
 	"github.com/hpcloud/tail"
-	"github.com/sendgridlabs/go-kinesis"
-	"github.com/sendgridlabs/go-kinesis/batchproducer"
+	"github.com/qntfy/frinesis"
+	"github.com/qntfy/frinesis/batchproducer"
 	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 )
 
+func makeKinesisClient(args map[string]interface{}) *kinesis.Kinesis {
+	var sess *session.Session
+	var creds *credentials.Credentials
+	sess = session.Must(session.NewSession())
+	switch args["--auth"].(string) {
+	case "env":
+		creds = credentials.NewEnvCredentials()
+	case "metadata":
+		creds = ec2rolecreds.NewCredentials(sess)
+	case "assumerole":
+		creds = stscreds.NewCredentials(sess, args["--role-arn"].(string))
+	}
+	_, err := creds.Get()
+	if err != nil {
+		log.Fatalf("Error getting credentials: %v", err)
+	}
+
+	var region string
+	if args["--region"] != nil {
+		region = args["--region"].(string)
+	} else {
+		// ParseArgs ensures this is not empty
+		region = os.Getenv("AWS_DEFAULT_REGION")
+	}
+
+	return kinesis.New(sess, &aws.Config{
+		Credentials: creds,
+		Region:      aws.String(region),
+	})
+}
+
 func makeKinesisProducer(args map[string]interface{}) (batchproducer.Producer, error) {
 	var err error
 	var ksis *kinesis.Kinesis
-	var auth kinesis.Auth
-	if args["--auth"].(string) == "env" {
-		auth, err = kinesis.NewAuthFromEnv()
-	} else {
-		auth, err = kinesis.NewAuthFromMetadata()
-	}
-	if err != nil {
-		return nil, fmt.Errorf("Unable to retrieve authentication credentials from the environment: %v", err)
-	}
 	if args["--endpoint"] != nil {
-		ksis = kinesis.NewWithEndpoint(auth, "dummyregion", args["--endpoint"].(string))
+		ksis = frinesis.NewClientWithEndpoint("dummyregion", args["--endpoint"].(string))
 	} else {
-		var region string
-		if args["--region"] != nil {
-			region = args["--region"].(string)
-		} else {
-			// ParseArgs ensures this is not empty
-			region = os.Getenv("AWS_DEFAULT_REGION")
-		}
-		ksis = kinesis.New(auth, region)
+		ksis = makeKinesisClient(args)
+	}
+
+	// frinesis uses zap, which is ever so slightly incompatible with the standard logger :(
+	loggerConfig := zap.NewProductionConfig()
+	loggerConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	loggerLevel := zap.NewAtomicLevel()
+	loggerLevel.SetLevel(lib.LogLevelsZap[args["--log-level"].(string)])
+	loggerConfig.Level = loggerLevel
+	loggerConfig.EncoderConfig.TimeKey = "time"
+	logger, err := loggerConfig.Build()
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	config := batchproducer.Config{
@@ -45,7 +79,7 @@ func makeKinesisProducer(args map[string]interface{}) (batchproducer.Producer, e
 		BatchSize:               100,
 		MaxAttemptsPerRecord:    2,
 		StatInterval:            1 * time.Second,
-		Logger:                  log.StandardLogger(),
+		Logger:                  logger,
 	}
 	producer, err := batchproducer.New(ksis, args["--stream-name"].(string), config)
 	if err != nil {
