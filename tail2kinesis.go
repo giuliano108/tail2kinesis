@@ -8,7 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/giuliano108/tail2kinesis/lib"
-	"github.com/hpcloud/tail"
+	"github.com/nxadm/tail"
 	"github.com/qntfy/frinesis"
 	"github.com/qntfy/frinesis/batchproducer"
 	log "github.com/sirupsen/logrus"
